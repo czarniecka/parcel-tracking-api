@@ -5,10 +5,10 @@ This project aims to create a RESTful API using Spring Boot that allows users to
 ## API Endpoints
 
 ### Track a Parcel
-**GET** `/api/parcels/{userId}/{trackingNumber}`
+**GET** `/api/track/{userId}/{trackingNumber}`
 Retrieve the status of a parcel for a specific user using its tracking number.
 ### Send a Parcel
-**POST** `/api/parcels`  
+**POST** `/api/packages/send`  
 Send a new package to a specified locker.
 
 **Request body**:  
