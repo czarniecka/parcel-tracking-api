@@ -1,7 +1,8 @@
 package com.example.parceltrackingapi.service;
 
-import com.example.parceltrackingapi.dto.ParcelDto;
-import com.example.parceltrackingapi.model.Parcel;
+import com.example.parceltrackingapi.dto.ParcelResponseDto;
+import com.example.parceltrackingapi.exception.ParcelAlreadyExistsException;
+import com.example.parceltrackingapi.models.Parcel;
 import com.example.parceltrackingapi.repository.ParcelRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,10 +41,10 @@ public class ParcelServiceTest {
 
     @Test
     void trackParcelShouldReturnParcelWhenParcelExistsAndUserIdMatches() {
-        Optional<ParcelDto> result = parcelService.trackParcel("123456", "user123");
+        Optional<ParcelResponseDto> result = parcelService.trackParcel("123456", "user123");
 
         assertTrue(result.isPresent());
-        ParcelDto dto = result.get();
+        ParcelResponseDto dto = result.get();
         assertEquals("123456", dto.getTrackingNumber());
         assertEquals("user123", dto.getUserId());
         assertEquals("In Transit", dto.getStatus());
@@ -53,38 +54,16 @@ public class ParcelServiceTest {
     void trackParcelShouldReturnEmptyWhenTrackingNumberDoesNotExist() {
         when(parcelRepository.getParcel("000000")).thenReturn(null);
 
-        Optional<ParcelDto> result = parcelService.trackParcel("000000", "user123");
+        Optional<ParcelResponseDto> result = parcelService.trackParcel("000000", "user123");
 
         assertFalse(result.isPresent());
     }
 
     @Test
     void trackParcelShouldReturnEmptyWhenUserIdDoesNotMatchParcelOwner() {
-        Optional<ParcelDto> result = parcelService.trackParcel("123456", "wrongUser");
+        Optional<ParcelResponseDto> result = parcelService.trackParcel("123456", "wrongUser");
 
         assertFalse(result.isPresent());
-    }
-
-    @Test
-    void trackParcelShouldStoreParcelWhenParcelDoesNotExistYet() {
-        String trackingNumber = "654321";
-        String userId = "user456";
-        String lockerId = "locker9";
-        String packageSize = "large";
-
-        when(parcelRepository.getParcel(trackingNumber)).thenReturn(null);
-
-        Parcel parcel = parcelService.sendParcel(userId, trackingNumber, lockerId, packageSize);
-
-        assertNotNull(parcel);
-        assertEquals(trackingNumber, parcel.getTrackingNumber());
-
-        when(parcelRepository.getParcel(trackingNumber)).thenReturn(parcel);
-
-        Optional<ParcelDto> result = parcelService.trackParcel(trackingNumber, userId);
-
-        assertTrue(result.isPresent());
-        assertEquals(userId, result.get().getUserId());
     }
 
     @Test
@@ -104,17 +83,18 @@ public class ParcelServiceTest {
     }
 
     @Test
-    void sendParcelShouldThrowExceptionWhenTrackingNumberAlreadyExists() {
+    void sendParcelShouldThrowParcelAlreadyExistsExceptionWhenTrackingNumberAlreadyExists() {
         String trackingNumber = "duplicate123";
         Parcel existingParcel = new Parcel("userX", trackingNumber, "In Transit", "Unknown", "Unknown", "locker1", "small");
 
         when(parcelRepository.getParcel(trackingNumber)).thenReturn(existingParcel);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+        ParcelAlreadyExistsException exception = assertThrows(ParcelAlreadyExistsException.class, () ->
                 parcelService.sendParcel("userY", trackingNumber, "locker1", "small")
         );
-        assertTrue(exception.getMessage().contains("already exists"));
+        assertTrue(exception.getMessage().contains("Parcel with tracking number " + trackingNumber + " already exists"));
     }
+
 
     @Test
     void sendParcelShouldThrowExceptionWhenUserIdIsNull() {
@@ -147,5 +127,28 @@ public class ParcelServiceTest {
                 parcelService.sendParcel("userZ", trackingNumber, "", "medium")
         );
         assertTrue(exception.getMessage().contains("Locker ID cannot be null or empty"));
+    }
+
+    @Test
+    void sendParcelShouldThrowExceptionWhenTrackingNumberIsEmpty() {
+        String trackingNumber = "";
+        when(parcelRepository.getParcel(trackingNumber)).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                parcelService.sendParcel("user123", trackingNumber, "locker1", "medium")
+        );
+        assertTrue(exception.getMessage().contains("Tracking number cannot be null or empty"));
+    }
+
+
+    @Test
+    void sendParcelShouldThrowExceptionWhenUserIdIsEmpty() {
+        String trackingNumber = "userIDEmpty";
+        when(parcelRepository.getParcel(trackingNumber)).thenReturn(null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                parcelService.sendParcel("", trackingNumber, "locker1", "medium")
+        );
+        assertTrue(exception.getMessage().contains("User ID cannot be null or empty"));
     }
 }

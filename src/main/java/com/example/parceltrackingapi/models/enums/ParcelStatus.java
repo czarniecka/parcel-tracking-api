@@ -1,4 +1,4 @@
-package com.example.parceltrackingapi.model;
+package com.example.parceltrackingapi.models.enums;
 
 import lombok.Getter;
 

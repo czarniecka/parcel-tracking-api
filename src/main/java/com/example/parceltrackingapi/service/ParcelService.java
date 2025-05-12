@@ -1,10 +1,11 @@
 package com.example.parceltrackingapi.service;
 
-import com.example.parceltrackingapi.dto.ParcelDto;
-import com.example.parceltrackingapi.model.Parcel;
-import com.example.parceltrackingapi.model.ParcelLocation;
-import com.example.parceltrackingapi.model.ParcelSize;
-import com.example.parceltrackingapi.model.ParcelStatus;
+import com.example.parceltrackingapi.dto.ParcelResponseDto;
+import com.example.parceltrackingapi.exception.ParcelAlreadyExistsException;
+import com.example.parceltrackingapi.models.Parcel;
+import com.example.parceltrackingapi.models.enums.ParcelLocation;
+import com.example.parceltrackingapi.models.enums.ParcelSize;
+import com.example.parceltrackingapi.models.enums.ParcelStatus;
 import com.example.parceltrackingapi.repository.ParcelRepository;
 import org.springframework.stereotype.Service;
 
@@ -19,27 +20,13 @@ public class ParcelService {
         this.parcelRepository = parcelRepository;
     }
 
-    public Optional<ParcelDto> trackParcel(String trackingNumber, String userId) {
+    public Optional<ParcelResponseDto> trackParcel(String trackingNumber, String userId) {
         Parcel parcel = parcelRepository.getParcel(trackingNumber);
         if (isParcelAccessible(parcel, userId)) {
-            ParcelDto parcelDto = convertToDto(parcel);
-            return Optional.of(parcelDto);
+            ParcelResponseDto parcelResponseDto = convertToDto(parcel);
+            return Optional.of(parcelResponseDto);
         }
         return Optional.empty();
-    }
-
-    private boolean isParcelAccessible(Parcel parcel, String userId) {
-        return parcel != null && parcel.getUserId().equals(userId);
-    }
-
-    private ParcelDto convertToDto(Parcel parcel) {
-        return new ParcelDto(
-                parcel.getUserId(),
-                parcel.getTrackingNumber(),
-                parcel.getStatus(),
-                parcel.getLocation(),
-                parcel.getEstimatedDelivery()
-        );
     }
 
     public Parcel sendParcel(String userId, String trackingNumber, String lockerId, String packageSize) {
@@ -47,6 +34,20 @@ public class ParcelService {
         Parcel parcel = createAndValidateParcel(userId, trackingNumber, lockerId, packageSize);
         parcelRepository.addParcel(parcel);
         return parcel;
+    }
+
+    private boolean isParcelAccessible(Parcel parcel, String userId) {
+        return parcel != null && parcel.getUserId().equals(userId);
+    }
+
+    private ParcelResponseDto convertToDto(Parcel parcel) {
+        return new ParcelResponseDto(
+                parcel.getUserId(),
+                parcel.getTrackingNumber(),
+                parcel.getStatus(),
+                parcel.getLocation(),
+                parcel.getEstimatedDelivery()
+        );
     }
 
     private Parcel createAndValidateParcel(String userId, String trackingNumber, String lockerId, String packageSize) {
@@ -79,7 +80,7 @@ public class ParcelService {
 
     private void checkIfParcelExistsOrThrow(String trackingNumber) {
         if (parcelRepository.getParcel(trackingNumber) != null) {
-            throw new IllegalArgumentException("Parcel with tracking number " + trackingNumber + " already exists");
+            throw new ParcelAlreadyExistsException("Parcel with tracking number " + trackingNumber + " already exists");
         }
     }
 }

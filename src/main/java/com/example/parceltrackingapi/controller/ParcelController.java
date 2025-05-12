@@ -1,8 +1,8 @@
 package com.example.parceltrackingapi.controller;
 
-import com.example.parceltrackingapi.dto.ParcelDto;
+import com.example.parceltrackingapi.dto.ParcelResponseDto;
 import com.example.parceltrackingapi.dto.ParcelRequestDto;
-import com.example.parceltrackingapi.model.Parcel;
+import com.example.parceltrackingapi.models.Parcel;
 import com.example.parceltrackingapi.service.ParcelService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -22,11 +22,11 @@ public class ParcelController {
     }
 
     @GetMapping("/track/{userId}/{trackingNumber}")
-    public ResponseEntity<ParcelDto> trackParcel(
+    public ResponseEntity<ParcelResponseDto> trackParcel(
             @PathVariable String userId,
             @PathVariable String trackingNumber) {
 
-        Optional<ParcelDto> parcelDtoOpt = parcelService.trackParcel(trackingNumber, userId);
+        Optional<ParcelResponseDto> parcelDtoOpt = parcelService.trackParcel(trackingNumber, userId);
         return parcelDtoOpt.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

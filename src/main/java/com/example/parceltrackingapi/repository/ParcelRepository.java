@@ -1,6 +1,6 @@
 package com.example.parceltrackingapi.repository;
 
-import com.example.parceltrackingapi.model.Parcel;
+import com.example.parceltrackingapi.models.Parcel;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Repository;
 

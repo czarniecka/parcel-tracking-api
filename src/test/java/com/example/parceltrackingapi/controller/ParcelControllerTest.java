@@ -1,9 +1,10 @@
 package com.example.parceltrackingapi.controller;
 
-import com.example.parceltrackingapi.dto.ParcelDto;
+import com.example.parceltrackingapi.dto.ParcelResponseDto;
 import com.example.parceltrackingapi.dto.ParcelRequestDto;
-import com.example.parceltrackingapi.model.Parcel;
-import com.example.parceltrackingapi.model.ParcelStatus;
+import com.example.parceltrackingapi.exception.ParcelAlreadyExistsException;
+import com.example.parceltrackingapi.models.Parcel;
+import com.example.parceltrackingapi.models.enums.ParcelStatus;
 import com.example.parceltrackingapi.service.ParcelService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,15 +33,15 @@ class ParcelControllerTest {
     @InjectMocks
     private ParcelController parcelController;
 
-    private ParcelDto parcelDto;
+    private ParcelResponseDto parcelResponseDto;
     private ParcelRequestDto parcelRequestDto;
     private Parcel parcel;
 
     @BeforeEach
     void setUp() {
-        parcelDto = new ParcelDto();
-        parcelDto.setTrackingNumber("track123");
-        parcelDto.setStatus(ParcelStatus.IN_TRANSIT.getDisplayName());
+        parcelResponseDto = new ParcelResponseDto();
+        parcelResponseDto.setTrackingNumber("track123");
+        parcelResponseDto.setStatus(ParcelStatus.IN_TRANSIT.getDisplayName());
 
         parcelRequestDto = new ParcelRequestDto();
         parcelRequestDto.setUserId("user123");
@@ -54,9 +56,9 @@ class ParcelControllerTest {
     @Test
     void trackParcelShouldReturnParcelWhenExists() {
         when(parcelService.trackParcel(anyString(), anyString()))
-                .thenReturn(Optional.of(parcelDto));
+                .thenReturn(Optional.of(parcelResponseDto));
 
-        ResponseEntity<ParcelDto> response = parcelController.trackParcel("user123", "track123");
+        ResponseEntity<ParcelResponseDto> response = parcelController.trackParcel("user123", "track123");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -68,7 +70,17 @@ class ParcelControllerTest {
         when(parcelService.trackParcel(anyString(), anyString()))
                 .thenReturn(Optional.empty());
 
-        ResponseEntity<ParcelDto> response = parcelController.trackParcel("user123", "track999");
+        ResponseEntity<ParcelResponseDto> response = parcelController.trackParcel("user123", "track999");
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
+
+    @Test
+    void trackParcelShouldReturnNotFoundWhenUserIDIsNotCorrect() {
+        when(parcelService.trackParcel(anyString(), anyString()))
+                .thenReturn(Optional.empty());
+
+        ResponseEntity<ParcelResponseDto> response = parcelController.trackParcel("_user123", "track123");
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
@@ -85,5 +97,38 @@ class ParcelControllerTest {
         assertNotNull(response.getBody());
         assertEquals("Package sent successfully", response.getBody().get("message"));
         assertEquals("track456", response.getBody().get("trackingNumber"));
+    }
+
+    @Test
+    void sendParcelShouldThrowExceptionWhenParcelAlreadyExists() {
+        when(parcelService.sendParcel(anyString(), anyString(), anyString(), anyString()))
+                .thenThrow(new ParcelAlreadyExistsException("Parcel with tracking number track456 already exists"));
+
+        ParcelAlreadyExistsException thrown = assertThrows(ParcelAlreadyExistsException.class, () ->
+                parcelController.sendParcel(parcelRequestDto));
+
+        assertEquals("Parcel with tracking number track456 already exists", thrown.getMessage());
+    }
+
+    @Test
+    void sendParcelShouldThrowIllegalArgumentExceptionWhenUserIdIsNull() {
+        when(parcelService.sendParcel(anyString(), anyString(), anyString(), anyString()))
+                .thenThrow(new IllegalArgumentException("User ID cannot be null or empty"));
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () ->
+                parcelController.sendParcel(parcelRequestDto));
+
+        assertEquals("User ID cannot be null or empty", thrown.getMessage());
+    }
+
+    @Test
+    void sendParcelShouldThrowRuntimeExceptionWhenUnexpectedErrorOccurs() {
+        when(parcelService.sendParcel(anyString(), anyString(), anyString(), anyString()))
+                .thenThrow(new RuntimeException("An unexpected error occurred"));
+
+        RuntimeException thrown = assertThrows(RuntimeException.class, () ->
+                parcelController.sendParcel(parcelRequestDto));
+
+        assertEquals("An unexpected error occurred", thrown.getMessage());
     }
 }
